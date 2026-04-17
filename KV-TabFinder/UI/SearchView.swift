@@ -136,16 +136,14 @@ private struct ResultsList: View {
                 .padding(6)
             }
             .onChange(of: scrollRevision) { _ in
-                // Scroll by the row's UUID so ForEach's identity and
-                // the ScrollViewReader target agree. `anchor: nil` asks
-                // SwiftUI for the minimal scroll to make the row
-                // visible — works for first and last rows alike,
-                // unlike `.center` which silently no-ops at edges.
+                // Scroll by the row's UUID so ForEach identity and the
+                // ScrollViewReader target agree. No animation: rapid
+                // arrow presses produced overlapping tweens that made
+                // the list look like it was "rebuilding from the
+                // middle" instead of stepping row by row.
                 guard results.indices.contains(selectedIndex) else { return }
                 let targetID = results[selectedIndex].id
-                withAnimation(.easeOut(duration: 0.12)) {
-                    proxy.scrollTo(targetID, anchor: nil)
-                }
+                proxy.scrollTo(targetID, anchor: nil)
             }
         }
     }
