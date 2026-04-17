@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: NSStatusItem!
     private var menuBarMenu: MenuBarMenu!
+    private var settingsWindow: NSWindow?
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         guard !enforceSingleInstance() else { return }
@@ -23,6 +24,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         registerHotkey(combo: settings.hotkey)
         // Warm the cache so the first hotkey press paints instantly.
         panelController.startRefresh()
+
+        // When the Settings window (or any normal-level window we open
+        // imperatively) closes, revert activation policy back to
+        // .accessory so the Dock icon stops lingering.
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            DispatchQueue.main.async {
+                guard NSApp.activationPolicy() == .regular else { return }
+                let stillOpen = NSApp.windows.contains { window in
+                    window.isVisible && window.level == .normal
+                }
+                if !stillOpen {
+                    NSApp.setActivationPolicy(.accessory)
+                }
+            }
+        }
     }
 
     /// Returns true if we terminated because another copy is already running.
@@ -75,14 +95,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Settings
 
+    /// Opens a plain NSWindow hosting SettingsView via NSHostingController.
+    /// We avoid SwiftUI's `Settings` scene because for LSUIElement apps
+    /// the `showSettingsWindow:` responder action dispatches successfully
+    /// but never actually creates a window. Same fix as KV-TextSniper.
     func openSettings() {
+        NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
-        if #available(macOS 14.0, *) {
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        } else if #available(macOS 13.0, *) {
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        } else {
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+
+        if let window = settingsWindow {
+            window.makeKeyAndOrderFront(nil)
+            return
         }
+
+        let root = SettingsView(
+            store: settings,
+            onHotkeyChange: { [weak self] combo in
+                self?.registerHotkey(combo: combo)
+            }
+        )
+        let hosting = NSHostingController(rootView: root)
+        let window = NSWindow(contentViewController: hosting)
+        window.styleMask = [.titled, .closable, .miniaturizable]
+        window.title = "KV-TabFinder — Settings"
+        window.setContentSize(NSSize(width: 480, height: 280))
+        window.center()
+        window.isReleasedWhenClosed = false
+        settingsWindow = window
+        window.makeKeyAndOrderFront(nil)
     }
 }

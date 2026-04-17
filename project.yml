@@ -6,6 +6,15 @@ options:
   createIntermediateGroups: true
   developmentLanguage: en
 
+configs:
+  Debug: debug
+  Release: release
+  # "Local" is a release-optimised build intended for local
+  # installation into /Applications. No sandbox (free Apple ID can't
+  # issue a provisioning profile for scripting-targets), hardened
+  # runtime on, optimiser on, no debugger entitlement.
+  Local: release
+
 settings:
   base:
     SWIFT_VERSION: "5.10"
@@ -20,6 +29,10 @@ settings:
       ENABLE_HARDENED_RUNTIME: NO
     Release:
       ENABLE_HARDENED_RUNTIME: YES
+    Local:
+      ENABLE_HARDENED_RUNTIME: YES
+      SWIFT_OPTIMIZATION_LEVEL: -O
+      SWIFT_COMPILATION_MODE: wholemodule
 
 targets:
   KV-TabFinder:
@@ -48,6 +61,8 @@ targets:
           CODE_SIGN_ENTITLEMENTS: KV-TabFinder/KV-TabFinder-Debug.entitlements
         Release:
           CODE_SIGN_ENTITLEMENTS: KV-TabFinder/KV-TabFinder.entitlements
+        Local:
+          CODE_SIGN_ENTITLEMENTS: KV-TabFinder/KV-TabFinder-Debug.entitlements
     info:
       path: KV-TabFinder/Info.plist
       properties:

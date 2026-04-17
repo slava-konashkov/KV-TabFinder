@@ -1,15 +1,11 @@
 import SwiftUI
 
-struct SettingsScene: Scene {
-    @ObservedObject var store: SettingsStore
-    let onHotkeyChange: (HotkeyCombo) -> Void
-
-    var body: some Scene {
-        Settings {
-            SettingsView(store: store, onHotkeyChange: onHotkeyChange)
-        }
-    }
-}
+// Note: we intentionally do NOT use SwiftUI's `Settings { … }` scene.
+// For LSUIElement (menu-bar-only / .accessory) apps the system's
+// `showSettingsWindow:` responder action reports as dispatched but
+// never actually creates a window. Instead AppDelegate hosts
+// SettingsView inside a plain NSWindow + NSHostingController — see
+// AppDelegate.openSettings(). Same fix was used in KV-TextSniper.
 
 struct SettingsView: View {
     @ObservedObject var store: SettingsStore
