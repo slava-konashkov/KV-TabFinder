@@ -21,6 +21,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Log.app.notice("launch bundleID=\(bundleID, privacy: .public) path=\(path, privacy: .public)")
         setupMenuBar()
         registerHotkey(combo: settings.hotkey)
+        // Warm the cache so the first hotkey press paints instantly.
+        panelController.startRefresh()
     }
 
     /// Returns true if we terminated because another copy is already running.

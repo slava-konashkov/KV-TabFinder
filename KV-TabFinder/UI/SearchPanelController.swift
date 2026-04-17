@@ -8,6 +8,12 @@ final class SearchPanelController {
     private let aggregator: TabAggregator
     private var hideObserver: NSObjectProtocol?
 
+    /// Last successful fetch. Shown instantly on the next `show()` so
+    /// the UI never waits on AppleScript before appearing.
+    private var cache: TabFetchResult?
+    /// Guard against running more than one background refresh at a time.
+    private var refreshInFlight = false
+
     init(aggregator: TabAggregator) {
         self.panel = SearchPanel()
         self.viewModel = SearchViewModel()
@@ -51,25 +57,46 @@ final class SearchPanelController {
     }
 
     func show() {
-        Log.panel.notice("show")
+        Log.panel.notice("show cached=\(self.cache?.tabs.count ?? 0)")
         viewModel.query = ""
-        viewModel.load(result: TabFetchResult(tabs: [], failures: []))
+        // Paint immediately with whatever we already have.
+        viewModel.load(result: cache ?? TabFetchResult(tabs: [], failures: []))
         centerPanel()
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
 
-        Task { [aggregator, viewModel] in
-            let result = await aggregator.fetchAll()
-            await MainActor.run {
-                viewModel.load(result: result)
-                Log.panel.info("UI updated tabs=\(result.tabs.count) failures=\(result.failures.count)")
-            }
-        }
+        startRefresh()
     }
 
     func hide() {
         Log.panel.info("hide")
         panel.orderOut(nil)
+    }
+
+    /// Fire-and-forget fetch that updates the cache and the view model
+    /// once it finishes. Call this on app launch to warm the cache, and
+    /// again whenever the panel is shown to refresh stale data.
+    func startRefresh() {
+        guard !refreshInFlight else {
+            Log.panel.debug("refresh skipped (already in flight)")
+            return
+        }
+        refreshInFlight = true
+
+        Task { [weak self] in
+            guard let self else { return }
+            let result = await self.aggregator.fetchAll()
+            await MainActor.run {
+                self.cache = result
+                self.refreshInFlight = false
+                // Only push to UI if panel is visible; otherwise cache
+                // is used on next show().
+                if self.panel.isVisible {
+                    self.viewModel.load(result: result)
+                }
+                Log.panel.info("refresh done tabs=\(result.tabs.count) failures=\(result.failures.count)")
+            }
+        }
     }
 
     private func activate(_ tab: Tab) {

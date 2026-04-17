@@ -13,19 +13,21 @@ struct SafariTabProvider: TabProvider {
     var isRunning: Bool { browser.isRunning }
 
     func fetchTabs() async throws -> [Tab] {
+        // Bulk query. See ChromiumTabProvider for why we use the
+        // `… of every tab of win` form instead of `… of tabs of win`.
+        // Safari uses `name` on tabs (not `title`).
         let source = """
         tell application id "\(browser.bundleID)"
-            set out to {}
-            set wcount to count of windows
-            repeat with w from 1 to wcount
+            set output to {}
+            repeat with w from 1 to count of windows
                 set win to window w
-                set tcount to count of tabs of win
-                repeat with t from 1 to tcount
-                    set theTab to tab t of win
-                    set end of out to {w, t, name of theTab, URL of theTab}
-                end repeat
+                if (count of tabs of win) is 0 then
+                    set end of output to {{}, {}}
+                else
+                    set end of output to {name of every tab of win, URL of every tab of win}
+                end if
             end repeat
-            return out
+            return output
         end tell
         """
         let descriptor = try await runner.run(source: source, bundleID: browser.bundleID)
@@ -45,22 +47,28 @@ struct SafariTabProvider: TabProvider {
 
     private func parse(descriptor: NSAppleEventDescriptor) throws -> [Tab] {
         var tabs: [Tab] = []
-        let count = descriptor.numberOfItems
-        guard count > 0 else { return [] }
-        for i in 1...count {
+        let windowCount = descriptor.numberOfItems
+        guard windowCount > 0 else { return [] }
+        for w in 1...windowCount {
             guard
-                let row = descriptor.atIndex(i),
-                row.numberOfItems == 4,
-                let w = row.atIndex(1)?.int32Value,
-                let t = row.atIndex(2)?.int32Value
+                let entry = descriptor.atIndex(w),
+                entry.numberOfItems >= 2,
+                let titles = entry.atIndex(1),
+                let urls = entry.atIndex(2)
             else { continue }
-            let title = row.atIndex(3)?.stringValue ?? ""
-            let url = row.atIndex(4)?.stringValue ?? ""
-            tabs.append(Tab(browser: browser,
-                            windowIndex: Int(w),
-                            tabIndex: Int(t),
-                            title: title,
-                            url: url))
+            let tabCount = min(titles.numberOfItems, urls.numberOfItems)
+            guard tabCount > 0 else { continue }
+            for t in 1...tabCount {
+                let title = titles.atIndex(t)?.stringValue ?? ""
+                let url = urls.atIndex(t)?.stringValue ?? ""
+                tabs.append(Tab(
+                    browser: browser,
+                    windowIndex: w,
+                    tabIndex: t,
+                    title: title,
+                    url: url
+                ))
+            }
         }
         return tabs
     }
