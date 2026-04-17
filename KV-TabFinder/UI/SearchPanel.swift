@@ -47,15 +47,19 @@ final class SearchPanel: NSPanel {
             if mods.isEmpty {
                 switch Int(event.keyCode) {
                 case kVK_DownArrow:
+                    Log.panel.notice("panel keyDown ↓ (repeat=\(event.isARepeat))")
                     onMoveDown?()
                     return
                 case kVK_UpArrow:
+                    Log.panel.notice("panel keyDown ↑ (repeat=\(event.isARepeat))")
                     onMoveUp?()
                     return
                 case kVK_Return, kVK_ANSI_KeypadEnter:
+                    Log.panel.notice("panel keyDown ↩")
                     onSubmit?()
                     return
                 case kVK_Escape:
+                    Log.panel.notice("panel keyDown ⎋")
                     onEscape?()
                     return
                 default:
