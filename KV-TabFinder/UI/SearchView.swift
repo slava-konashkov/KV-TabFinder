@@ -127,7 +127,6 @@ private struct ResultsList: View {
                 LazyVStack(spacing: 2) {
                     ForEach(Array(results.enumerated()), id: \.element.id) { idx, r in
                         ResultRow(result: r, isSelected: idx == selectedIndex)
-                            .id(idx)
                             .onTapGesture { onSelect(idx) }
                             .onHover { hovering in
                                 if hovering { onHover(idx) }
@@ -137,8 +136,15 @@ private struct ResultsList: View {
                 .padding(6)
             }
             .onChange(of: scrollRevision) { _ in
-                withAnimation(.easeOut(duration: 0.1)) {
-                    proxy.scrollTo(selectedIndex, anchor: .center)
+                // Scroll by the row's UUID so ForEach's identity and
+                // the ScrollViewReader target agree. `anchor: nil` asks
+                // SwiftUI for the minimal scroll to make the row
+                // visible — works for first and last rows alike,
+                // unlike `.center` which silently no-ops at edges.
+                guard results.indices.contains(selectedIndex) else { return }
+                let targetID = results[selectedIndex].id
+                withAnimation(.easeOut(duration: 0.12)) {
+                    proxy.scrollTo(targetID, anchor: nil)
                 }
             }
         }
