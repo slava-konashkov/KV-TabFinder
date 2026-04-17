@@ -12,16 +12,19 @@ struct ResultRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 HighlightedText(
                     result.tab.title.isEmpty ? "(untitled)" : result.tab.title,
-                    highlights: result.matchIndices,
+                    highlights: result.matchField == .title ? result.matchIndices : [],
                     font: .system(size: 13, weight: .medium),
                     baseColor: isSelected ? .white : .primary,
                     highlightColor: isSelected ? .white : .accentColor
                 )
-                Text(result.tab.url)
-                    .font(.system(size: 11))
-                    .foregroundColor(isSelected ? .white.opacity(0.85) : .secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                HighlightedText(
+                    result.tab.url,
+                    highlights: result.matchField == .url ? result.matchIndices : [],
+                    font: .system(size: 11),
+                    baseColor: isSelected ? .white.opacity(0.85) : .secondary,
+                    highlightColor: isSelected ? .white : .accentColor,
+                    truncation: .middle
+                )
             }
 
             Spacer(minLength: 0)

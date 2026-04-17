@@ -6,26 +6,29 @@ struct HighlightedText: View {
     let font: Font
     let baseColor: Color
     let highlightColor: Color
+    let truncation: Text.TruncationMode
 
     init(
         _ text: String,
         highlights: [Int],
         font: Font = .body,
         baseColor: Color = .primary,
-        highlightColor: Color = .accentColor
+        highlightColor: Color = .accentColor,
+        truncation: Text.TruncationMode = .tail
     ) {
         self.text = text
         self.highlights = highlights
         self.font = font
         self.baseColor = baseColor
         self.highlightColor = highlightColor
+        self.truncation = truncation
     }
 
     var body: some View {
         Text(buildAttributed())
             .font(font)
             .lineLimit(1)
-            .truncationMode(.tail)
+            .truncationMode(truncation)
     }
 
     private func buildAttributed() -> AttributedString {

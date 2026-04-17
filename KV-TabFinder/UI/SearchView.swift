@@ -58,8 +58,6 @@ struct SearchView: View {
     let onActivate: (Tab) -> Void
     let onCancel: () -> Void
 
-    @FocusState private var searchFocused: Bool
-
     var body: some View {
         VStack(spacing: 0) {
             // Search field
@@ -68,16 +66,14 @@ struct SearchView: View {
                     .foregroundColor(.secondary)
                     .font(.system(size: 16, weight: .medium))
 
-                TextField("Search tabs…", text: $viewModel.query)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 18))
-                    .focused($searchFocused)
-                    .onSubmit {
-                        if let s = viewModel.selected() { onActivate(s.tab) }
-                    }
-                    .onChange(of: viewModel.query) { _ in
-                        viewModel.resetToTop()
-                    }
+                SpotlightTextField(
+                    text: $viewModel.query,
+                    placeholder: "Search tabs…"
+                )
+                .frame(height: 22)
+                .onChange(of: viewModel.query) { _ in
+                    viewModel.resetToTop()
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
@@ -115,14 +111,6 @@ struct SearchView: View {
                 )
         )
         .clipShape(RoundedRectangle(cornerRadius: 10))
-        .onAppear { searchFocused = true }
-        .background(
-            KeyboardHandler(
-                onArrowDown: viewModel.moveDown,
-                onArrowUp: viewModel.moveUp,
-                onEscape: onCancel
-            )
-        )
     }
 }
 
@@ -225,43 +213,3 @@ private struct VisualEffectView: NSViewRepresentable {
     func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
 }
 
-/// Captures arrow keys and Escape at the panel level so they work regardless of focus.
-private struct KeyboardHandler: NSViewRepresentable {
-    let onArrowDown: () -> Void
-    let onArrowUp: () -> Void
-    let onEscape: () -> Void
-
-    func makeNSView(context: Context) -> NSView {
-        let view = KeyCatcherView()
-        view.onArrowDown = onArrowDown
-        view.onArrowUp = onArrowUp
-        view.onEscape = onEscape
-        return view
-    }
-    func updateNSView(_ nsView: NSView, context: Context) {}
-
-    final class KeyCatcherView: NSView {
-        var onArrowDown: (() -> Void)?
-        var onArrowUp: (() -> Void)?
-        var onEscape: (() -> Void)?
-        private var monitor: Any?
-
-        override func viewDidMoveToWindow() {
-            super.viewDidMoveToWindow()
-            if monitor == nil, let _ = window {
-                monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-                    guard let self, event.window === self.window else { return event }
-                    switch Int(event.keyCode) {
-                    case 125: self.onArrowDown?(); return nil // down
-                    case 126: self.onArrowUp?();   return nil // up
-                    case 53:  self.onEscape?();    return nil // esc
-                    default:  return event
-                    }
-                }
-            } else if window == nil, let m = monitor {
-                NSEvent.removeMonitor(m)
-                monitor = nil
-            }
-        }
-    }
-}

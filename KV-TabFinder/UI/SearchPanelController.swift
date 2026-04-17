@@ -32,6 +32,17 @@ final class SearchPanelController {
         hosting.translatesAutoresizingMaskIntoConstraints = false
         panel.contentView = hosting
 
+        // Wire panel-level key interception to the view model. sendEvent
+        // in SearchPanel calls these before the responder chain runs,
+        // so arrow-key scrolling in the SwiftUI ScrollView can never win.
+        panel.onMoveUp   = { [weak self] in self?.viewModel.moveUp() }
+        panel.onMoveDown = { [weak self] in self?.viewModel.moveDown() }
+        panel.onSubmit   = { [weak self] in
+            guard let tab = self?.viewModel.selected()?.tab else { return }
+            self?.activate(tab)
+        }
+        panel.onEscape   = { [weak self] in self?.hide() }
+
         // Hide when user clicks elsewhere.
         hideObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.didResignKeyNotification,

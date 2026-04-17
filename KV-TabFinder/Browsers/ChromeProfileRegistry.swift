@@ -18,16 +18,24 @@ enum ChromeProfileRegistry {
 
     /// Produces an `[Int: String]` mapping of window index (1-based, as
     /// used in AppleScript) to an email/display string for the profile
-    /// of that window. Returns empty when mapping cannot be determined.
+    /// of that window.
+    ///
+    /// The underlying signal — `last_active_profiles` in Chrome's Local
+    /// State — lists UNIQUE profiles only. If one profile has multiple
+    /// windows open, the list is shorter than `windowCount`. We degrade
+    /// gracefully: map the profiles we know to the first N windows, and
+    /// leave the remaining windows without a badge (rather than wiping
+    /// every Chrome row as if we had no data).
     static func windowProfileMap(windowCount: Int) -> [Int: String] {
         guard windowCount > 0 else { return [:] }
         guard let state = loadLocalState() else { return [:] }
         let activeDirs = state.lastActiveProfiles
-        guard activeDirs.count == windowCount else { return [:] }
+        guard !activeDirs.isEmpty else { return [:] }
 
         var out: [Int: String] = [:]
-        for (i, dirName) in activeDirs.enumerated() {
-            if let display = accountDisplayString(for: dirName, localState: state) {
+        let upper = min(activeDirs.count, windowCount)
+        for i in 0..<upper {
+            if let display = accountDisplayString(for: activeDirs[i], localState: state) {
                 out[i + 1] = display
             }
         }
