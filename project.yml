@@ -33,6 +33,8 @@ targets:
           - "KV-TabFinder-Debug.entitlements"
     resources:
       - KV-TabFinder/Assets.xcassets
+    dependencies:
+      - sdk: libsqlite3.tbd
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.konashkov.KV-TabFinder

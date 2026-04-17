@@ -1,56 +1,97 @@
 import Foundation
 
-/// Resolves Chrome profile → account email by reading Chrome's on-disk
-/// `Local State` + per-profile `Preferences` files. AppleScript does not
-/// expose the profile of a window, so we fall back to a heuristic:
-/// Chrome writes the list of currently active profile directories into
-/// `Local State.profile.last_active_profiles`, ordered from most- to
-/// least-recently-active. We map AppleScript's `window N` (which is
-/// ordered frontmost → back) 1:1 to that list.
+/// Resolves Chrome profile → account email for each AppleScript window.
 ///
-/// Caveats:
-/// - If a profile has multiple windows open the count won't match and
-///   the resolver returns nil (caller falls back to plain "Chrome").
-/// - Only works in the non-sandboxed Debug build. Release/App Store
-///   build would need a user-granted security-scoped bookmark to read
-///   `~/Library/Application Support/Google/Chrome`.
+/// Chrome's AppleScript doesn't expose profile info, so we do it by
+/// content: we match each window's tab URLs against each profile's
+/// `History` SQLite (via ChromeHistoryStore). The profile whose history
+/// contains the most of a window's tab URLs wins that window.
+///
+/// Fallback: when URL matching is inconclusive (e.g. all tabs are
+/// `chrome://newtab/`) we fall back to Chrome's
+/// `Local State.profile.last_active_profiles` heuristic, mapping
+/// frontmost windows to the most-recently-active profiles.
+///
+/// Debug-only: this uses filesystem access which won't work under the
+/// App Sandbox used in Release.
 enum ChromeProfileRegistry {
 
-    /// Produces an `[Int: String]` mapping of window index (1-based, as
-    /// used in AppleScript) to an email/display string for the profile
-    /// of that window.
-    ///
-    /// The underlying signal — `last_active_profiles` in Chrome's Local
-    /// State — lists UNIQUE profiles only. If one profile has multiple
-    /// windows open, the list is shorter than `windowCount`. We degrade
-    /// gracefully: map the profiles we know to the first N windows, and
-    /// leave the remaining windows without a badge (rather than wiping
-    /// every Chrome row as if we had no data).
-    static func windowProfileMap(windowCount: Int) -> [Int: String] {
-        guard windowCount > 0 else { return [:] }
-        guard let state = loadLocalState() else { return [:] }
-        let activeDirs = state.lastActiveProfiles
-        guard !activeDirs.isEmpty else { return [:] }
+    /// Input: one entry per Chrome window, 1-based index plus the URLs
+    /// of every tab in that window.
+    struct WindowURLs {
+        let windowIndex: Int
+        let urls: [String]
+    }
+
+    /// Output: window index → human-readable account label (email or name).
+    static func windowProfileMap(windows: [WindowURLs]) -> [Int: String] {
+        guard !windows.isEmpty, let state = loadLocalState() else { return [:] }
+        let profileDirs = Array(state.infoCache.keys)
+        guard !profileDirs.isEmpty else { return [:] }
+
+        // Preload URL sets for each profile once.
+        var profileURLs: [String: Set<String>] = [:]
+        for dir in profileDirs {
+            profileURLs[dir] = ChromeHistoryStore.shared.recentURLs(profileDir: dir)
+        }
 
         var out: [Int: String] = [:]
-        let upper = min(activeDirs.count, windowCount)
-        for i in 0..<upper {
-            if let display = accountDisplayString(for: activeDirs[i], localState: state) {
-                out[i + 1] = display
+        for w in windows {
+            let matchable = w.urls.filter { Self.isMatchableURL($0) }
+            if !matchable.isEmpty {
+                // Score each profile by how many of this window's
+                // URLs appear in its history.
+                var best: (dir: String, score: Int)? = nil
+                for (dir, set) in profileURLs {
+                    let score = matchable.reduce(0) { $0 + (set.contains($1) ? 1 : 0) }
+                    if score > 0, score > (best?.score ?? 0) {
+                        best = (dir, score)
+                    }
+                }
+                if let best, let display = accountDisplayString(for: best.dir, localState: state) {
+                    out[w.windowIndex] = display
+                    continue
+                }
+            }
+            // Fallback: use last_active_profiles ordering.
+            if let dir = fallbackProfileDir(for: w.windowIndex, state: state),
+               let display = accountDisplayString(for: dir, localState: state) {
+                out[w.windowIndex] = display
             }
         }
         return out
     }
 
+    // MARK: - Heuristics
+
+    private static func isMatchableURL(_ url: String) -> Bool {
+        // URLs that never hit the urls table or are shared across all
+        // profiles.
+        if url.isEmpty { return false }
+        if url.hasPrefix("chrome://") { return false }
+        if url.hasPrefix("chrome-extension://") { return false }
+        if url == "about:blank" { return false }
+        return true
+    }
+
+    /// Map window index to last_active_profiles[i-1] when URL matching
+    /// fails. Imperfect but better than nothing.
+    private static func fallbackProfileDir(for windowIndex: Int, state: LocalState) -> String? {
+        let i = windowIndex - 1
+        guard state.lastActiveProfiles.indices.contains(i) else {
+            return state.lastActiveProfiles.first
+        }
+        return state.lastActiveProfiles[i]
+    }
+
     // MARK: - Local State parsing
 
-    private struct LocalState {
+    struct LocalState {
         let lastActiveProfiles: [String]
-        /// Profile directory name → info from `profile.info_cache`.
         let infoCache: [String: ProfileInfo]
     }
 
-    private struct ProfileInfo {
+    struct ProfileInfo {
         let name: String?
         let userName: String?  // email
         let gaiaName: String?
@@ -85,16 +126,13 @@ enum ChromeProfileRegistry {
         return LocalState(lastActiveProfiles: lastActive, infoCache: cache)
     }
 
-    /// Prefer email (`user_name`). Fall back to `name`, then `gaia_name`.
     private static func accountDisplayString(for profileDir: String, localState: LocalState) -> String? {
-        // First try: consult info_cache from Local State.
         if let info = localState.infoCache[profileDir] {
             if let email = info.userName, !email.isEmpty { return email }
             if let name  = info.name, !name.isEmpty     { return name }
             if let gaia  = info.gaiaName, !gaia.isEmpty { return gaia }
         }
 
-        // Fallback: read the profile's own Preferences file.
         let prefsURL = chromeDir.appendingPathComponent(profileDir).appendingPathComponent("Preferences")
         guard let data = try? Data(contentsOf: prefsURL),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {

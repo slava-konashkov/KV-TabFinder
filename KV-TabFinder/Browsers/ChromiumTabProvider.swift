@@ -70,9 +70,16 @@ struct ChromiumTabProvider: TabProvider {
             }
         }
 
-        let profileMap: [Int: String] = browser == .chrome
-            ? ChromeProfileRegistry.windowProfileMap(windowCount: windowCount)
-            : [:]
+        let profileMap: [Int: String]
+        if browser == .chrome {
+            let windows: [ChromeProfileRegistry.WindowURLs] =
+                (1...windowCount).map { w in
+                    .init(windowIndex: w, urls: rows.filter { $0.w == w }.map(\.url))
+                }
+            profileMap = ChromeProfileRegistry.windowProfileMap(windows: windows)
+        } else {
+            profileMap = [:]
+        }
 
         return rows.map { r in
             Tab(
