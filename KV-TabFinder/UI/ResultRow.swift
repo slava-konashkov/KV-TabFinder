@@ -26,17 +26,15 @@ struct ResultRow: View {
 
             Spacer(minLength: 0)
 
-            Text(result.tab.browser.displayName)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundColor(isSelected ? .white.opacity(0.85) : .secondary)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(isSelected
-                              ? Color.white.opacity(0.2)
-                              : Color.secondary.opacity(0.12))
+            VStack(alignment: .trailing, spacing: 2) {
+                BrowserBadge(
+                    text: result.tab.browser.displayName,
+                    isSelected: isSelected
                 )
+                if let hint = result.tab.accountHint {
+                    BrowserBadge(text: hint, isSelected: isSelected, subtle: true)
+                }
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -46,6 +44,28 @@ struct ResultRow: View {
                 .fill(isSelected ? Color.accentColor : Color.clear)
         )
         .contentShape(Rectangle())
+    }
+}
+
+private struct BrowserBadge: View {
+    let text: String
+    let isSelected: Bool
+    var subtle: Bool = false
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: subtle ? 9 : 10, weight: .medium))
+            .foregroundColor(isSelected ? .white.opacity(subtle ? 0.75 : 0.9) : .secondary)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(isSelected
+                          ? Color.white.opacity(subtle ? 0.12 : 0.2)
+                          : Color.secondary.opacity(subtle ? 0.08 : 0.12))
+            )
     }
 }
 

@@ -46,7 +46,7 @@ struct ChromiumTabProvider: TabProvider {
     }
 
     private func parse(descriptor: NSAppleEventDescriptor) throws -> [Tab] {
-        var tabs: [Tab] = []
+        var rows: [(w: Int, t: Int, title: String, url: String)] = []
         let count = descriptor.numberOfItems
         guard count > 0 else { return [] }
         for i in 1...count {
@@ -58,12 +58,23 @@ struct ChromiumTabProvider: TabProvider {
             else { continue }
             let title = row.atIndex(3)?.stringValue ?? ""
             let url = row.atIndex(4)?.stringValue ?? ""
-            tabs.append(Tab(browser: browser,
-                            windowIndex: Int(w),
-                            tabIndex: Int(t),
-                            title: title,
-                            url: url))
+            rows.append((Int(w), Int(t), title, url))
         }
-        return tabs
+
+        let windowCount = rows.map(\.w).max() ?? 0
+        let profileMap: [Int: String] = browser == .chrome
+            ? ChromeProfileRegistry.windowProfileMap(windowCount: windowCount)
+            : [:]
+
+        return rows.map { r in
+            Tab(
+                browser: browser,
+                windowIndex: r.w,
+                tabIndex: r.t,
+                title: r.title,
+                url: r.url,
+                accountHint: profileMap[r.w]
+            )
+        }
     }
 }

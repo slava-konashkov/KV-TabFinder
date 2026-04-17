@@ -7,6 +7,10 @@ final class SearchViewModel: ObservableObject {
     @Published private(set) var tabs: [Tab] = []
     @Published private(set) var failures: [TabFetchFailure] = []
     @Published var selectedIndex: Int = 0
+    /// Bumped only by keyboard navigation so the list scrolls the new
+    /// selection into view. Hover changes `selectedIndex` without
+    /// bumping this, so the list doesn't jump under the mouse.
+    @Published private(set) var scrollRevision: Int = 0
 
     var results: [SearchResult] {
         SearchResult.rank(tabs: tabs, query: query)
@@ -16,16 +20,30 @@ final class SearchViewModel: ObservableObject {
         tabs = result.tabs
         failures = result.failures
         selectedIndex = 0
+        scrollRevision &+= 1
     }
 
     func moveDown() {
         guard !results.isEmpty else { return }
         selectedIndex = min(selectedIndex + 1, results.count - 1)
+        scrollRevision &+= 1
     }
 
     func moveUp() {
         guard !results.isEmpty else { return }
         selectedIndex = max(selectedIndex - 1, 0)
+        scrollRevision &+= 1
+    }
+
+    func selectByHover(_ idx: Int) {
+        guard results.indices.contains(idx) else { return }
+        selectedIndex = idx
+        // Intentionally do NOT bump scrollRevision — hover must not scroll.
+    }
+
+    func resetToTop() {
+        selectedIndex = 0
+        scrollRevision &+= 1
     }
 
     func selected() -> SearchResult? {
@@ -58,7 +76,7 @@ struct SearchView: View {
                         if let s = viewModel.selected() { onActivate(s.tab) }
                     }
                     .onChange(of: viewModel.query) { _ in
-                        viewModel.selectedIndex = 0
+                        viewModel.resetToTop()
                     }
             }
             .padding(.horizontal, 16)
@@ -77,12 +95,13 @@ struct SearchView: View {
                 ResultsList(
                     results: viewModel.results,
                     selectedIndex: viewModel.selectedIndex,
+                    scrollRevision: viewModel.scrollRevision,
                     onSelect: { idx in
-                        viewModel.selectedIndex = idx
+                        viewModel.selectByHover(idx)
                         if let s = viewModel.selected() { onActivate(s.tab) }
                     },
                     onHover: { idx in
-                        viewModel.selectedIndex = idx
+                        viewModel.selectByHover(idx)
                     }
                 )
             }
@@ -110,6 +129,7 @@ struct SearchView: View {
 private struct ResultsList: View {
     let results: [SearchResult]
     let selectedIndex: Int
+    let scrollRevision: Int
     let onSelect: (Int) -> Void
     let onHover: (Int) -> Void
 
@@ -128,9 +148,9 @@ private struct ResultsList: View {
                 }
                 .padding(6)
             }
-            .onChange(of: selectedIndex) { newIdx in
+            .onChange(of: scrollRevision) { _ in
                 withAnimation(.easeOut(duration: 0.1)) {
-                    proxy.scrollTo(newIdx, anchor: .center)
+                    proxy.scrollTo(selectedIndex, anchor: .center)
                 }
             }
         }
