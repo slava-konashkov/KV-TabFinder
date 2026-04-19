@@ -2,12 +2,15 @@
 
 Spotlight-style tab search for macOS. Press a shortcut → get every open tab across Safari, Chrome, Chromium, Arc, Brave, Edge, Vivaldi and Opera in one fuzzy-searchable list → press Enter to jump to it.
 
-<!-- Add a hero screenshot: ![Search panel](images/search-panel.png) -->
+![Search panel](images/search-panel.png)
 
 ## Install
 
-1. Download the latest `KV-TabFinder-X.Y.Z.dmg` from the [Releases page](https://github.com/slava-konashkov/KV-TabFinder/releases/latest).
-2. Open the DMG and drag **KV-TabFinder** into **Applications**.
+**[⬇ Download KV-TabFinder.dmg](https://slava-konashkov.github.io/KV-TabFinder/KV-TabFinder.dmg)** — always the latest stable build.
+Older versions live on the [Releases page](https://github.com/slava-konashkov/KV-TabFinder/releases).
+
+1. Open the downloaded DMG.
+2. Drag **KV-TabFinder** into **Applications**.
 3. Launch the app from Applications.
 4. A magnifying-glass icon appears in the menu bar.
 
@@ -19,7 +22,7 @@ Press **⌥⇥** (Option + Tab).
 
 macOS will ask permission to control each browser you have open:
 
-<!-- ![Automation permission](images/permission-prompt.png) -->
+![Automation permission](images/permission-prompt.png)
 
 Click **OK** for every browser. KV-TabFinder only reads tab titles and URLs — nothing else.
 
@@ -36,7 +39,7 @@ Start typing to filter — matches against both **title** and **URL**. Fuzzy: `g
 
 Tabs from different Chrome profiles render with a colored badge per account, so work / personal / side-project tabs stay distinguishable.
 
-<!-- ![Fuzzy search with profile badges](images/profile-badges.png) -->
+![Fuzzy search with profile badges](images/profile-badges.png)
 
 ## Settings
 
@@ -45,7 +48,7 @@ Menu-bar lupa → **Settings…**
 - **Shortcut** — click the shortcut field and press a new combination.
 - **Launch at login** — start KV-TabFinder automatically.
 
-<!-- ![Settings window](images/settings.png) -->
+![Settings window](images/settings.png)
 
 ## Known limitations
 
