@@ -1,103 +1,63 @@
 # KV-TabFinder
 
-Spotlight-style browser tab search for macOS. Press a global hotkey → get a fuzzy-searchable list of every tab open in Safari, Chrome, Chromium, Arc, Brave, Edge, Vivaldi, or Opera → hit Enter to jump to it.
+Spotlight-style tab search for macOS. Press a shortcut → get every open tab across Safari, Chrome, Chromium, Arc, Brave, Edge, Vivaldi and Opera in one fuzzy-searchable list → press Enter to jump to it.
 
-Menu-bar only (no Dock icon). Search by title **and** URL. Each Chrome profile renders in its own color so tabs from different Google accounts stay distinguishable.
+<!-- Add a hero screenshot: ![Search panel](images/search-panel.png) -->
 
-## Requirements
+## Install
 
-- macOS 13 Ventura or later
-- Xcode 15 or later
-- [xcodegen](https://github.com/yonaskolb/XcodeGen) to generate the Xcode project: `brew install xcodegen`
-- Any Apple ID signed into Xcode (a free Personal Team is enough for local use)
+1. Download the latest `KV-TabFinder-X.Y.Z.dmg` from the [Releases page](https://github.com/slava-konashkov/KV-TabFinder/releases/latest).
+2. Open the DMG and drag **KV-TabFinder** into **Applications**.
+3. Launch the app from Applications.
+4. A magnifying-glass icon appears in the menu bar.
 
-## Build & install
+The first time you open the app macOS will show an "unverified developer" warning — **right-click → Open** once, allow it. After that it launches normally.
 
-```bash
-brew install xcodegen          # one-time
-xcodegen                       # generates KV-TabFinder.xcodeproj from project.yml
-```
+## First run
 
-Open in Xcode and pick your Team under the `KV-TabFinder` target → **Signing & Capabilities**. Then from the command line:
+Press **⌥⇥** (Option + Tab).
 
-```bash
-xcodebuild \
-  -project KV-TabFinder.xcodeproj \
-  -scheme KV-TabFinder \
-  -configuration Local \
-  -destination 'platform=macOS' \
-  build \
-  CODE_SIGN_IDENTITY="Apple Development: <your cert>" \
-  CODE_SIGN_STYLE=Manual
+macOS will ask permission to control each browser you have open:
 
-cp -R \
-  ~/Library/Developer/Xcode/DerivedData/KV-TabFinder-*/Build/Products/Local/KV-TabFinder.app \
-  /Applications/
-```
+<!-- ![Automation permission](images/permission-prompt.png) -->
 
-Launch from `/Applications`. A magnifying glass appears in the menu bar; press **⌥⇥** to open search.
-
-First time you hit the hotkey, macOS asks permission for each browser (*"KV-TabFinder wants to control Google Chrome…"*). Approve. To revisit later: **System Settings → Privacy & Security → Automation**.
-
-### Build configurations
-
-| Config | Sandbox | Hardened Runtime | Use |
-|---|---|---|---|
-| **Debug**   | off | off | Local development from Xcode (⌘R) |
-| **Local**   | off | on  | Installable build for `/Applications` — signed with Apple Development cert, no paid Dev Program needed |
-| **Release** | on  | on  | Mac App Store submission — requires paid Apple Developer Program for the `scripting-targets` provisioning profile |
+Click **OK** for every browser. KV-TabFinder only reads tab titles and URLs — nothing else.
 
 ## Usage
 
 | Action | Shortcut |
 |---|---|
-| Open search (default) | ⌥⇥ |
+| Open search | **⌥⇥** (configurable) |
 | Next / previous result | ↓ / ↑ |
-| Jump to tab | ↩ |
-| Close panel | ⎋ |
+| Jump to tab | ↩ Enter |
+| Close panel | ⎋ Escape |
 
-Change the shortcut in **Menu bar icon → Settings…**.
+Start typing to filter — matches against both **title** and **URL**. Fuzzy: `gh pr` finds *GitHub Pull Request*.
 
-## Architecture
+Tabs from different Chrome profiles render with a colored badge per account, so work / personal / side-project tabs stay distinguishable.
 
-- `Hotkey/` — Carbon `RegisterEventHotKey` wrapper (sandbox-safe, no Accessibility permission needed).
-- `Browsers/` — AppleScript-based tab providers. Chromium-family browsers share one script parameterised by bundle ID. `ChromeHistoryStore` reads each profile's `History` SQLite (via `?immutable=1`) to resolve window → account.
-- `Search/` — fuzzy matcher with match-index highlights; matches against both title and URL.
-- `UI/` — `NSPanel` floating window hosting a SwiftUI search view. Arrow keys, Enter and Escape are intercepted at the panel level in `sendEvent(_:)` so the ScrollView never steals them.
-- `Settings/` — settings window (plain `NSWindow` + `NSHostingController`, not SwiftUI's `Settings` scene — that doesn't work for `LSUIElement` apps) and menu bar menu.
-- `Permissions/` — detects `errAEEventNotPermitted` and guides the user to Automation settings.
+<!-- ![Fuzzy search with profile badges](images/profile-badges.png) -->
 
-## Debugging / logs
+## Settings
 
-Logs go through unified logging (`os.Logger`) under subsystem `com.konashkov.KV-TabFinder`.
+Menu-bar lupa → **Settings…**
 
-Live stream:
+- **Shortcut** — click the shortcut field and press a new combination.
+- **Launch at login** — start KV-TabFinder automatically.
 
-```bash
-log stream --style compact --predicate 'subsystem == "com.konashkov.KV-TabFinder"'
-```
-
-Last 5 minutes:
-
-```bash
-log show --style compact --predicate 'subsystem == "com.konashkov.KV-TabFinder"' --last 5m
-```
-
-In Console.app: filter → `subsystem:com.konashkov.KV-TabFinder`.
-
-Categories: `app`, `hotkey`, `panel`, `aggregator`, `provider`, `applescript`.
+<!-- ![Settings window](images/settings.png) -->
 
 ## Known limitations
 
-- **Firefox is not supported.** Firefox doesn't expose tab titles via AppleScript.
-- **Chrome Incognito tabs** are not returned — this is Chrome's own AppleScript policy.
-- The first access of each browser pops a system permission prompt (one-time).
-- Chrome profile detection relies on reading the browser's `History` SQLite files on disk; works in Debug / Local builds only. The sandboxed Release build would need user-granted filesystem access.
+- **Firefox** isn't supported — Firefox has no AppleScript API for tabs.
+- **Chrome Incognito** tabs aren't listed — Chrome's own policy.
+- macOS will prompt for Automation permission once per browser on first access.
 
-## Mac App Store distribution
+## Requirements
 
-For App Store submission use the `Release` configuration: sandbox is on and the `scripting-targets` entitlement explicitly lists the eight supported browser bundle IDs. In App Review, explain that AppleScript is used only to read tab titles / URLs and to activate the user-selected tab — no page content is accessed.
+- macOS 13 Ventura or later
+- Apple Silicon or Intel Mac
 
-## Tests
+## Feedback
 
-`⌘U` in Xcode. Tests cover `FuzzyMatcher`, `HotkeyCombo` (encode/decode + display), and `TabAggregator` with fake providers.
+For issues, feature requests, or questions use [this repo's Issues tab](https://github.com/slava-konashkov/KV-TabFinder/issues). Source code is kept in a private repository.
