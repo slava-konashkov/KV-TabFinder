@@ -85,20 +85,41 @@ codesign --verify --deep --strict --verbose=2 "${APP_PATH}" 2>&1 | sed 's/^/    
 mkdir -p "${STAGING_DIR}"
 rm -rf "${STAGING_DIR:?}/"*
 cp -R "${APP_PATH}" "${STAGING_DIR}/"
-ln -s /Applications "${STAGING_DIR}/Applications"
 
-# --- Create the DMG --------------------------------------------------------
 OUT="${DIST_DIR}/${DMG_NAME}"
 rm -f "${OUT}"
 
-echo "==> Packaging ${OUT}"
-hdiutil create \
-    -volname "${PRODUCT_NAME}" \
-    -srcfolder "${STAGING_DIR}" \
-    -ov \
-    -fs HFS+ \
-    -format UDZO \
-    "${OUT}" >/dev/null
+# --- Create the DMG --------------------------------------------------------
+# Prefer `create-dmg` (brew) for a styled window — background image,
+# icon positioning, drag-target to /Applications. Falls back to plain
+# hdiutil if it's not installed.
+BG_IMAGE="assets/dmg-background.png"
+
+if command -v create-dmg >/dev/null 2>&1 && [[ -f "${BG_IMAGE}" ]]; then
+    echo "==> Packaging styled DMG via create-dmg"
+    create-dmg \
+        --volname "${PRODUCT_NAME}" \
+        --background "${BG_IMAGE}" \
+        --window-pos 200 120 \
+        --window-size 640 400 \
+        --icon-size 128 \
+        --icon "${PRODUCT_NAME}.app" 160 200 \
+        --hide-extension "${PRODUCT_NAME}.app" \
+        --app-drop-link 480 200 \
+        --no-internet-enable \
+        "${OUT}" \
+        "${STAGING_DIR}/" >/dev/null
+else
+    echo "==> Packaging plain DMG via hdiutil"
+    ln -s /Applications "${STAGING_DIR}/Applications"
+    hdiutil create \
+        -volname "${PRODUCT_NAME}" \
+        -srcfolder "${STAGING_DIR}" \
+        -ov \
+        -fs HFS+ \
+        -format UDZO \
+        "${OUT}" >/dev/null
+fi
 
 rm -rf "${STAGING_DIR}"
 
