@@ -42,51 +42,51 @@ ctx.drawLinearGradient(
     options: []
 )
 
-// Title "KV-TabFinder" near the top.
-let title = "KV-TabFinder"
-let titleFont = NSFont.systemFont(ofSize: 24, weight: .semibold)
-let titleAttrs: [NSAttributedString.Key: Any] = [
-    .font: titleFont,
-    .foregroundColor: NSColor(calibratedRed: 0.20, green: 0.22, blue: 0.30, alpha: 1.0),
-]
-let titleStr = NSAttributedString(string: title, attributes: titleAttrs)
-let titleLine = CTLineCreateWithAttributedString(titleStr)
-let titleBounds = CTLineGetBoundsWithOptions(titleLine, .useOpticalBounds)
-ctx.textPosition = CGPoint(
-    x: (size.width - titleBounds.width) / 2 - titleBounds.origin.x,
-    y: size.height - 60
-)
-CTLineDraw(titleLine, ctx)
+// Helper: draw text centred horizontally at a given distance from the
+// top of the image (flips into bottom-origin CG coords internally).
+func drawCenteredText(
+    _ text: String,
+    font: NSFont,
+    color: NSColor,
+    topOffset: CGFloat
+) {
+    let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]
+    let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: attrs))
+    let bounds = CTLineGetBoundsWithOptions(line, .useOpticalBounds)
+    ctx.textPosition = CGPoint(
+        x: (size.width - bounds.width) / 2 - bounds.origin.x,
+        y: size.height - topOffset - bounds.height
+    )
+    CTLineDraw(line, ctx)
+}
 
-// Sub-title / hint.
-let hint = "Drag the app into Applications to install"
-let hintFont = NSFont.systemFont(ofSize: 12, weight: .regular)
-let hintAttrs: [NSAttributedString.Key: Any] = [
-    .font: hintFont,
-    .foregroundColor: NSColor(calibratedRed: 0.40, green: 0.43, blue: 0.50, alpha: 1.0),
-]
-let hintStr = NSAttributedString(string: hint, attributes: hintAttrs)
-let hintLine = CTLineCreateWithAttributedString(hintStr)
-let hintBounds = CTLineGetBoundsWithOptions(hintLine, .useOpticalBounds)
-ctx.textPosition = CGPoint(
-    x: (size.width - hintBounds.width) / 2 - hintBounds.origin.x,
-    y: size.height - 90
+drawCenteredText(
+    "KV-TabFinder",
+    font: NSFont.systemFont(ofSize: 22, weight: .semibold),
+    color: NSColor(calibratedRed: 0.20, green: 0.22, blue: 0.30, alpha: 1.0),
+    topOffset: 36
 )
-CTLineDraw(hintLine, ctx)
+drawCenteredText(
+    "Drag the app into Applications to install",
+    font: NSFont.systemFont(ofSize: 12, weight: .regular),
+    color: NSColor(calibratedRed: 0.40, green: 0.43, blue: 0.50, alpha: 1.0),
+    topOffset: 72
+)
 
-// Arrow between the two icon slots. create-dmg default icon-y in our
-// script is 200 (from bottom), icons are sized ~128. Arrow sits
-// centred vertically with them.
-let arrowColor = CGColor(red: 0.45, green: 0.48, blue: 0.56, alpha: 0.75)
+// Arrow between the two icon slots. `create-dmg` positions icons at
+// y=200 from the TOP of the window; in CG's bottom-origin coords
+// that's y = 400 - 200 = 200. Earlier we miscalculated and the arrow
+// floated above the icons.
+let arrowColor = CGColor(red: 0.45, green: 0.48, blue: 0.56, alpha: 0.85)
 ctx.setStrokeColor(arrowColor)
 ctx.setFillColor(arrowColor)
-ctx.setLineWidth(4)
+ctx.setLineWidth(5)
 ctx.setLineCap(.round)
+ctx.setLineJoin(.round)
 
-// Shaft
-let arrowY: CGFloat = 200 + 64 // vertical midline of a 128-pt icon at y=200
-let shaftStart = CGPoint(x: 250, y: arrowY)
-let shaftEnd   = CGPoint(x: 380, y: arrowY)
+let arrowY: CGFloat = size.height - 200 // icon centre, from TOP → CG
+let shaftStart = CGPoint(x: 248, y: arrowY)
+let shaftEnd   = CGPoint(x: 372, y: arrowY)
 ctx.move(to: shaftStart)
 ctx.addLine(to: shaftEnd)
 ctx.strokePath()
@@ -94,8 +94,8 @@ ctx.strokePath()
 // Arrow head
 let head = CGMutablePath()
 head.move(to: CGPoint(x: 400, y: arrowY))
-head.addLine(to: CGPoint(x: 380, y: arrowY - 12))
-head.addLine(to: CGPoint(x: 380, y: arrowY + 12))
+head.addLine(to: CGPoint(x: 372, y: arrowY - 16))
+head.addLine(to: CGPoint(x: 372, y: arrowY + 16))
 head.closeSubpath()
 ctx.addPath(head)
 ctx.fillPath()
