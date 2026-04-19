@@ -26,3 +26,6 @@ Package.resolved
 ## App Store/signing
 *.mobileprovision
 *.p12
+
+## Release artefacts (scripts/make_dmg.sh output)
+dist/
