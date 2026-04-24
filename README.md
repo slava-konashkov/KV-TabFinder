@@ -14,7 +14,22 @@ Older versions live on the [Releases page](https://github.com/slava-konashkov/KV
 3. Launch the app from Applications.
 4. A magnifying-glass icon appears in the menu bar.
 
-The first time you open the app macOS will show an "unverified developer" warning — **right-click → Open** once, allow it. After that it launches normally.
+The first time you open the app macOS will show **"KV-TabFinder" Not Opened / Apple could not verify…** — this is expected because the build is signed with a personal developer certificate, not notarised. Two ways to allow it:
+
+**Option 1 — System Settings (no terminal):**
+1. Press **Done** on the warning.
+2. Open **System Settings → Privacy & Security**.
+3. Scroll down to **Security**. There's a line _"`KV-TabFinder` was blocked to protect your Mac"_.
+4. Click **Open Anyway**, authenticate.
+5. Next launches are silent.
+
+**Option 2 — Terminal (fastest):**
+```bash
+xattr -cr /Applications/KV-TabFinder.app
+open /Applications/KV-TabFinder.app
+```
+
+`xattr -cr` removes the `com.apple.quarantine` attribute macOS adds to downloads; with the attribute gone Gatekeeper skips its check.
 
 ## First run
 
