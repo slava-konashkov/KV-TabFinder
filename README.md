@@ -35,11 +35,7 @@ open /Applications/KV-TabFinder.app
 
 Press **⌥⇥** (Option + Tab).
 
-macOS will ask permission to control each browser you have open:
-
-![Automation permission](images/permission-prompt.png)
-
-Click **OK** for every browser. KV-TabFinder only reads tab titles and URLs — nothing else.
+macOS will ask permission to control each browser you have open. Click **OK** for every browser — KV-TabFinder only reads tab titles and URLs, nothing else.
 
 ## Usage
 
@@ -53,8 +49,6 @@ Click **OK** for every browser. KV-TabFinder only reads tab titles and URLs — 
 Start typing to filter — matches against both **title** and **URL**. Fuzzy: `gh pr` finds *GitHub Pull Request*.
 
 Tabs from different Chrome profiles render with a colored badge per account, so work / personal / side-project tabs stay distinguishable.
-
-![Fuzzy search with profile badges](images/profile-badges.png)
 
 ## Settings
 
