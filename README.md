@@ -2,7 +2,7 @@
 
 Spotlight-style tab search for macOS. Press a shortcut → get every open tab across Safari, Chrome, Chromium, Arc, Brave, Edge, Vivaldi and Opera in one fuzzy-searchable list → press Enter to jump to it.
 
-![Search panel](images/search-panel.png)
+![Search panel](images/main-window.png)
 
 ## Install
 
@@ -49,6 +49,8 @@ macOS will ask permission to control each browser you have open. Click **OK** fo
 Start typing to filter — matches against both **title** and **URL**. Fuzzy: `gh pr` finds *GitHub Pull Request*.
 
 Tabs from different Chrome profiles render with a colored badge per account, so work / personal / side-project tabs stay distinguishable.
+
+Each row also shows the page's real favicon — pulled from the browser's own favicon cache. For Chromium-family browsers (Chrome, Arc, Brave, Edge, Vivaldi, Opera, Chromium) you'll need to grant read-only access to the browser's data folder once: open **Settings → Permissions** and click **Choose Folder…** next to each browser. Without that, rows fall back to the browser's app icon.
 
 ## Settings
 
